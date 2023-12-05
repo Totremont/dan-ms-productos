@@ -1,85 +1,119 @@
 import { PrismaClient } from "@prisma/client";
-export {insertProducto,updateProducto,deleteProducto,findProductoById}
 
 const prisma = new PrismaClient()
 
-async function insertProducto(request: {nombre : string, descripcion : string, stockActual : number,
-    proveedorId : number, categoriaId : number})
+export default class ProductoService
 {
-    let object = await prisma.producto.create(
-        {
-            data:
+    async insertProducto(request: {nombre : string, descripcion : string, stockActual : number,
+        proveedorId : number, categoriaId : number})
+    {
+        let object = await prisma.producto.create(
             {
-                nombre : request.nombre,
-                descripcion : request.descripcion,
-                proveedor:
+                data:
                 {
-                    connect:
+                    nombre : request.nombre,
+                    descripcion : request.descripcion,
+                    proveedor:
                     {
-                        id: request.proveedorId
-                    }
+                        connect:
+                        {
+                            id: request.proveedorId
+                        }
+                    },
+                    categoria:
+                    {
+                        connect:
+                        {
+                            id: request.categoriaId
+                        }
+                    },
+                    stockActual : request.stockActual
                 },
-                categoria:
+                include:
                 {
-                    connect:
-                    {
-                        id: request.categoriaId
-                    }
+                    proveedor : true,
+                    categoria : true
+                }
+            });
+        return object;
+    }
+
+    async updateProducto(request: {id : number,nombre : string, descripcion : string, stockActual : number})
+    {
+        let object = await prisma.producto.update(
+            {
+                where:
+                {
+                    id : request.id
                 },
-                stockActual : request.stockActual
-            },
-            include:
-            {
-                proveedor : true,
-                categoria : true
-            }
-        });
-    return object;
-}
+                data:
+                {
+                    nombre : request.nombre,
+                    descripcion : request.descripcion,
+                    stockActual : request.stockActual
+                }
+            });
+        return object;
+    }
 
-async function updateProducto(request: {id : number,nombre : string, descripcion : string, stockActual : number})
-{
-    let object = await prisma.producto.update(
-        {
-            where:
+    async deleteProducto(request_id : number)
+    {
+        let object = await prisma.producto.delete(
             {
-                id : request.id
-            },
-            data:
-            {
-                nombre : request.nombre,
-                descripcion : request.descripcion,
-                stockActual : request.stockActual
-            }
-        });
-    return object;
-}
+                where:
+                {
+                    id : request_id
+                }
+            });
+        return object;
+    }
 
-async function deleteProducto(request_id : number)
-{
-    let object = await prisma.producto.delete(
-        {
-            where:
+    async findProductoById(request_id : number)
+    {
+        let object = await prisma.producto.findUniqueOrThrow(
             {
-                id : request_id
-            }
-        });
-    return object;
-}
+                where:
+                {
+                    id : request_id
+                },
+                include:
+                {
+                    proveedor : true,
+                    categoria : true
+                }
+            });
+        return object;
+    }
 
-async function findProductoById(request_id : number)
-{
-    let object = await prisma.producto.findUniqueOrThrow(
-        {
-            where:
+    async findBy(criteria : {nombre?,proveedor?,categoria?,stock?} 
+        = {nombre : "",proveedor : "", categoria : ""})
+    {
+        let object = await prisma.producto.findMany(
             {
-                id : request_id
-            },
-            include:
-            {
-                proveedor : true,
-                categoria : true
-            }
-        });
-    return object;
+                where:
+                {
+                    AND:
+                    [
+                        {
+                            nombre : {contains : criteria.nombre}
+                        },
+                        {
+                            proveedor : {is : {nombre : {contains : criteria.proveedor}}}
+                        },
+                        {
+                            categoria : {is : {nombre : {contains : criteria.categoria}}}
+                        },
+                        {
+                            stockActual : criteria.hasOwnProperty("stock") ? {equals : criteria.stock} : {gt : -1}
+                        },
+                    ]
+                },
+                include:
+                {
+                    proveedor : true,
+                    categoria : true
+                }
+            });
+        return object;
+    }
 }
